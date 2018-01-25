@@ -16,6 +16,16 @@
 #include "opencv2/cudawarping.hpp"
 #include "opencv2/cudaimgproc.hpp"
 #include "opencv2/cudaarithm.hpp"
+
+#include <thrust/host_vector.h>
+#include <thrust/device_vector.h>
+#include <thrust/generate.h>
+#include <thrust/reduce.h>
+#include <thrust/functional.h>
+#include <algorithm>
+#include <cstdlib>
+
+
 #include "timer.h"
 #include "hist_compute.cuh"
 
@@ -181,6 +191,41 @@ double third_movement(double *normal, double mean, double variance){
 
 }
 
+__device__ double s_answer;
+
+__global__ void first_mov(int n, double *data){
+	s_answer=0;
+	unsigned int i =threadIdx.x;
+
+	while(i<n)
+		s_answer = s_answer + data[i];
+	__syncthreads();
+}
+
+void call_first_mov(double *histogram){
+
+		int n = 256;
+		double *d_data;
+
+		double mean = first_movement(histogram);
+		printf("Mean: %.15f\n",mean);
+
+		//===============First  pass to get the mean Cuda.=======================//
+		cudaMalloc((void**)&d_data,n*sizeof(double));
+		cudaMemcpy(d_data,histogram,n*sizeof(double),cudaMemcpyHostToDevice);
+
+		//Peform first pass to get the mean
+		first_mov<<<256,1>>>(n,d_data);
+
+		typeof(s_answer) answer;
+		cudaMemcpyFromSymbol(&answer, "s_answer", sizeof(answer), 0, cudaMemcpyDeviceToHost);
+
+		cudaFree(d_data);
+		printf("S= %.15f",answer);
+
+		cudaDeviceSynchronize();
+}
+
 void processUsingOpenCvGpu(std::string input_file, std::string output_file) {
 	//Read input image from the disk
 	Mat inputCpu = imread(input_file,CV_LOAD_IMAGE_COLOR);
@@ -244,6 +289,19 @@ void processUsingOpenCvGpu(std::string input_file, std::string output_file) {
 	double third = third_movement(normal, first, second);
 
 	printf("third_movement %.15f\n",third);
+
+
+//	call_first_mov(normal);
+
+	  // generate random data serially
+	  thrust::host_vector<int> h_vec(100);
+	  std::generate(h_vec.begin(), h_vec.end(), rand);
+
+	  // transfer to device and compute sum
+	  thrust::device_vector<int> d_vec = h_vec;
+	  int x = thrust::reduce(d_vec.begin(), d_vec.end(), 0, thrust::plus<int>());
+
+	  printf("thrust %d\n",x);
 
 }
 

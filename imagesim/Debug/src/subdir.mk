@@ -4,12 +4,15 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CU_SRCS += \
+../src/cuda_movement.cu \
 ../src/main.cu 
 
 OBJS += \
+./src/cuda_movement.o \
 ./src/main.o 
 
 CU_DEPS += \
+./src/cuda_movement.d \
 ./src/main.d 
 
 
