@@ -139,6 +139,46 @@ void hist_normalize(int *source, double* destination, int amount){
 	}
 }
 
+/*Parallel function using openmp*/
+double pfirst_movement(double *histogram){
+
+	double sum, avg;
+	int size;
+	size = 256;
+	sum = 0;
+	avg = 0;
+	int i;
+	#pragma omp parallel for shared(histogram) private(i) reduction(+:sum) 
+	for(i = 0; i < size; i++){
+	    sum += histogram[i];
+	}
+	avg = sum / size;
+
+	return avg;
+
+	
+
+}
+/*Parallel function using openmp*/
+double psecond_movement (double *histogram, double mean){
+
+	double sum, variance;
+	int size;
+	size = 256;
+	sum = 0;
+	variance = 0;
+	int i;
+	#pragma omp parallel for shared(histogram,mean) private(i) reduction(+:sum) 
+	for(i = 0; i < size; i++){
+	    sum += ((histogram[i]-mean)*(histogram[i]-mean));
+	}
+	variance = sum / size;
+
+	return variance;
+
+}
+
+
 double first_movement (double *histogram){
 
 	double sum, avg;
